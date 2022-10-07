@@ -1,3 +1,6 @@
+---
+---
+
 # MS&amp;E 408: Independent Research on GFNs
 
 ## Overview
@@ -11,8 +14,7 @@
 
 - **Variational Monte Carlo**
 - **Kolomogorov equation**
-- **Langevin equation**: $$d\mathbf{X}_t=-\nabula V(\mathbf{X}_t)dt
-  +\sqrt{2\beta^{-1}}d\mathbf{W}_t$$
+- **Langevin equation**: $d\mathbf{X}_t=-\nabla V(\mathbf{X}_t)dt +\sqrt{2\beta^{-1}}d\mathbf{W}_t$
 - **Metastability**
 - **Muller-Brown potential**
 - **Boltzmann distribution**
