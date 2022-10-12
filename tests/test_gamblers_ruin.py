@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 
-from gamblers_ruin import mcmc
+from gamblers_ruin import exp_tilt_mcmc, mcmc
 
 
 def test_mcmc():

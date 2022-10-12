@@ -58,7 +58,7 @@ def sample_trajectory(starting_state, lower, upper, p_success):
     return int(traj[-1] == upper), traj
 
 
-def mcmc(
+def exp_tilt_mcmc(
     starting_state: int = 5,
     lower: int = 0,
     upper: int = 10,
