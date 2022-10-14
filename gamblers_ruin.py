@@ -69,8 +69,58 @@ def exp_tilt_mcmc(
 ) -> tuple[int, float, list[list[int]]]:
     if not starting_state > lower and starting_state < upper:
         raise InvalidStateError("starting state must lie between [lower, upper]")
-    # TODO(danj): implement
-    return None, None, None
+    traj_cond_win = []
+    is_win, traj = exp_tilt_sample_trajectory(starting_state, lower, upper, p_success)
+    if is_win:
+        traj_cond_win += [traj]
+    d = upper - starting_state
+    n = 1
+    q = 1 - p_success
+    theta = np.log(q / p_success)  # analytically optimal theta
+    # theta = np.log(p_success / q)  # analytically optimal theta
+    psi_theta = np.log(q + p_success * np.exp(theta))
+    p_win = is_win = is_win / np.exp(theta * d - len(traj) * psi_theta)
+    delta = 0
+    while n < n_burn_in:
+        is_win, traj = exp_tilt_sample_trajectory(
+            starting_state, lower, upper, p_success
+        )
+        if is_win:
+            traj_cond_win += [traj]
+        n += 1
+        # reweight by importance sampling weight
+        is_win = is_win / np.exp(theta * d - len(traj) * psi_theta)
+        delta = (is_win - p_win) / n
+        p_win += delta
+        if n % log_every_n == 0:
+            logging.debug(f"P(WIN)={p_win:.4f}")
+    while delta > epsilon:
+        is_win, traj = exp_tilt_sample_trajectory(
+            starting_state, lower, upper, p_success
+        )
+        if is_win:
+            traj_cond_win += [traj]
+        n += 1
+        # reweight by importance sampling weight
+        is_win = is_win / np.exp(theta * d - len(traj) * psi_theta)
+        delta = (is_win - p_win) / n
+        p_win += delta
+        if n % log_every_n == 0:
+            logging.debug(f"P(WIN)={p_win:.4f}")
+    return n, p_win, traj_cond_win
+
+
+def exp_tilt_sample_trajectory(starting_state, lower, upper, p_success):
+    traj = [starting_state]
+    q = 1 - p_success
+    theta = np.log(q / p_success)  # analytically optimal theta
+    # theta = np.log(p_success / q)  # analytically optimal theta
+    pt = p_success * np.exp(theta)
+    p = pt / (q + pt)
+    while traj[-1] > lower and traj[-1] < upper:
+        delta = 2 * np.random.binomial(1, p) - 1
+        traj += [traj[-1] + delta]
+    return int(traj[-1] == upper), traj
 
 
 def parse_args(argv):
@@ -110,7 +160,7 @@ def parse_args(argv):
         "--n_burn_in",
         help="number of burn in samples",
         type=int,
-        default=100,
+        default=1000,
     )
     parser.add_argument(
         "-e",
@@ -124,7 +174,7 @@ def parse_args(argv):
         "--log_every_n",
         help="log estimate every n samples",
         type=int,
-        default=1000,
+        default=10000,
     )
     args = parser.parse_args(argv[1:])
     if not args.starting_state:
@@ -138,14 +188,23 @@ class InvalidStateError(Exception):
 
 if __name__ == "__main__":
     args = parse_args(sys.argv)
-    print(
-        mcmc(
-            args.starting_state,
-            args.lower,
-            args.upper,
-            args.p_success,
-            args.n_burn_in,
-            args.epsilon,
-            args.log_every_n,
-        )
+    _, p_win, _ = mcmc(
+        args.starting_state,
+        args.lower,
+        args.upper,
+        args.p_success,
+        args.n_burn_in,
+        args.epsilon,
+        args.log_every_n,
     )
+    print(f"mcmc: P(WIN)={p_win}")
+    _, p_win, _ = exp_tilt_mcmc(
+        args.starting_state,
+        args.lower,
+        args.upper,
+        args.p_success,
+        args.n_burn_in,
+        args.epsilon,
+        args.log_every_n,
+    )
+    print(f"exp tilt mcmc: P(WIN)={p_win}")
