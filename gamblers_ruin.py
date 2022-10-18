@@ -114,8 +114,8 @@ def mcmc(
     stop = mp.Event()
     samplers = []
     for _ in range(n_samplers):
-        sampler = mp.Process(
-            target=sample,
+        s = mp.Process(
+            target=sampler,
             args=(
                 a,
                 b,
@@ -128,12 +128,12 @@ def mcmc(
                 stop,
             ),
         )
-        samplers.append(sampler)
-        sampler.start()
+        samplers.append(s)
+        s.start()
 
     def update_estimate():
-        nonlocal a, b, s0, p, q, theta, psi_theta, p_hit_b, n, delta, t_cond_b
-        t = sample(a, b, s0, p, q, theta)
+        nonlocal a, b, s0, p, q, theta, psi_theta, p_hit_b, n, delta, t_cond_b, queue
+        t = queue.get()
         w = weight(t, theta, psi_theta)
         hit_b = t[-1] == b
         p_hat = w * hit_b
@@ -154,7 +154,8 @@ def mcmc(
             logging.debug(f"P(hit b): {p_hit_b:0.5f} ({n} samples)")
 
     stop.set()
-    [sampler.join() for sampler in samplers]
+    for s in samplers:
+        s.join()
     queue.close()
     return n, p_hit_b, t_cond_b
 
