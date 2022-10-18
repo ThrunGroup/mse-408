@@ -3,9 +3,12 @@ import argparse
 import logging
 import multiprocessing as mp
 import sys
+import time
 from typing import Callable
 
 import numpy as np
+
+# TODO: when do you tell sampling to stop? what should your burn in be?
 
 logging.basicConfig(
     format="[%(levelname)s] %(asctime)s: %(message)s", level=logging.DEBUG
@@ -71,12 +74,12 @@ def mcmc(
     b: int = 5,
     s0: int = 0,
     p: float = 0.49,
-    n_burn: int = 100,
+    n_burn: int = 10000,
     epsilon: float = 1e-6,
     sample: Callable[[int, int, int, float, float, float], list[int]] = sample,
     weight: Callable[[list[int], float, float], float] = lambda t, theta, psi_theta: 1,
     log_every_n: int = 1000,
-    n_samplers: int = mp.cpu_count(),
+    n_samplers: int = 1,
 ) -> tuple[int, float, list[list[int]]]:
     """MCMC sampling for Gambler's Ruin.
 
@@ -98,6 +101,9 @@ def mcmc(
     Returns:
         tuple[int, float, list[int]]: Returns a tuple of (number of samples,
             estimate for `P(hit b)`, list of trajectories conditional on hitting b).
+
+    :warning: In many cases, multiprocessing is actually slower than a single
+    process due to the queuing lock overhead.
     """
     if not (s0 > -a and s0 < b):
         raise InvalidStateError("s0 must lie in (-a, b)")
@@ -110,30 +116,33 @@ def mcmc(
     delta = 0
     t_cond_b = []
 
-    queue = mp.Queue()
-    stop = mp.Event()
-    samplers = []
-    for _ in range(n_samplers):
-        s = mp.Process(
-            target=sampler,
-            args=(
-                a,
-                b,
-                s0,
-                p,
-                q,
-                theta,
-                sample,
-                queue,
-                stop,
-            ),
-        )
-        samplers.append(s)
-        s.start()
+    if n_samplers > 1:
+        queue = mp.Queue()
+        stop = mp.Event()
+        samplers = []
+        for _ in range(n_samplers):
+            s = mp.Process(
+                target=sampler,
+                args=(
+                    a,
+                    b,
+                    s0,
+                    p,
+                    q,
+                    theta,
+                    sample,
+                    queue,
+                    stop,
+                ),
+            )
+            samplers.append(s)
+            s.start()
+        # this is hacky, but simple for now (used in update_estimate)
+        sample = lambda *_: queue.get()
 
     def update_estimate():
-        nonlocal a, b, s0, p, q, theta, psi_theta, p_hit_b, n, delta, t_cond_b, queue
-        t = queue.get()
+        nonlocal a, b, s0, p, q, theta, psi_theta, p_hit_b, n, delta, t_cond_b, queue, sample
+        t = sample(a, b, s0, p, q, theta)
         w = weight(t, theta, psi_theta)
         hit_b = t[-1] == b
         p_hat = w * hit_b
@@ -153,10 +162,12 @@ def mcmc(
         if n % log_every_n == 0:
             logging.debug(f"P(hit b): {p_hit_b:0.5f} ({n} samples)")
 
-    stop.set()
-    for s in samplers:
-        s.join()
-    queue.close()
+    if n_samplers > 1:
+        stop.set()
+        for s in samplers:
+            s.terminate()
+            s.join()
+        queue.close()
     return n, p_hit_b, t_cond_b
 
 
@@ -213,14 +224,14 @@ def parse_args(argv):
         "--log_every_n",
         help="log estimate every n samples",
         type=int,
-        default=1000,
+        default=10000,
     )
     parser.add_argument(
         "-ns",
         "--n_samplers",
         help="number of parallel samplers to use",
         type=int,
-        default=mp.cpu_count(),
+        default=1,
     )
     args = parser.parse_args(argv[1:])
     if not args.s0:
@@ -234,6 +245,7 @@ if __name__ == "__main__":
     if args.exponential_tilt:
         sample = exp_tilt_sample
         weight = exp_tilt_weight
+    start = time.time()
     n, p_hit_b, _ = mcmc(
         args.a,
         args.b,
@@ -247,3 +259,4 @@ if __name__ == "__main__":
         args.n_samplers,
     )
     print(f"P(hit b): {p_hit_b:0.5f} ({n} samples)")
+    print(time.time() - start, "seconds")
