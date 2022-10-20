@@ -78,7 +78,7 @@ def mcmc(
     epsilon: float = 1e-6,
     sample: Callable[[int, int, int, float, float, float], list[int]] = sample,
     weight: Callable[[list[int], float, float], float] = lambda t, theta, psi_theta: 1,
-    log_every_n: int = 1000,
+    log_every_n: int = int(1e5),
     n_samplers: int = 1,
 ) -> tuple[int, float, list[list[int]]]:
     """MCMC sampling for Gambler's Ruin.
@@ -224,7 +224,7 @@ def parse_args(argv):
         "--log_every_n",
         help="log estimate every n samples",
         type=int,
-        default=10000,
+        default=int(1e5),
     )
     parser.add_argument(
         "-ns",
