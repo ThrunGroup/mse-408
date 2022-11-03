@@ -15,18 +15,23 @@ class Committor(pl.LightningModule):
     ):
         self.a = a
         self.b = b
-        self.p = torch.tensor([p, 1 - p])
+        self.p = p
+        self.q = 1 - p
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_width = n_hidden_width
         layers = [nn.Linear(a + b - 1, n_hidden_width), nn.LeakyReLU()]
         for _ in range(n_hidden_layers):
             layers += [nn.Linear(n_hidden_width, n_hidden_width), nn.LeakyReLU()]
-        layers += [nn.Linear(n_hidden_width, 2), nn.Softmax()]
+        layers += [nn.Linear(n_hidden_width, 1), nn.Softmax()]
         self.u = nn.Sequential(*layers)
 
-    def training_step(self, batch, _batch_idx):
-        x = nn.functional.one_hot(batch, self.a + self.b - 1)
+    def training_step(self, _batch, _batch_idx):
+        x = torch.arange(1, self.a + self.b)
+        x = nn.functional.one_hot(x, self.a + self.b - 1)
         u = self.u(x)
+        r = torch.empty(self.a + self.b + 1)
+        r[0], r[1] = 0, 1
+        r[1:-1] = u
         u_from = (u * self.p).sum(axis=1)
         u_to = u.sum(axis=1)
         loss = torch.square(torch.log(u_from / u_to))
