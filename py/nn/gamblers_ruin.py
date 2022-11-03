@@ -44,7 +44,7 @@ class Committor(pl.LightningModule):
     def training_step(self, _batch, _batch_idx):
         # TODO: alternative is to create the full u-vector and replace first and last values
         u = self.p_hit_b()
-        loss = torch.square(torch.log(u[:-1] * self.p / (u[1:] * self.q))).sum()
+        loss = torch.square(u[:-1] * self.p / (u[1:] * self.q)).mean()
         self.log("loss", loss)
         return loss
 
@@ -63,16 +63,6 @@ class Committor(pl.LightningModule):
 
     @classmethod
     def train_dataloader(cls):
-        """Returns a :class:`~InfiniteIterableDataset`.
-
-        Because samples are generated in this model and PyTorch Lightning
-        requires some form of DataLoader, this is a dummy class that counts
-        forever. These values are ignored in :meth:`training_step`.
-
-        Returns:
-            InfiniteIterableDataset: An infinite iterable dataset that
-                counts up forever.
-        """
         return InfiniteIterableDataset()
 
 
