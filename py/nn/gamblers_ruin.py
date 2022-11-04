@@ -27,6 +27,7 @@ class Committor(pl.LightningModule):
         p: float = 0.49,
         n_hidden_layers: int = 2,
         n_hidden_width: int = 128,
+        hidden_activation: nn.Module = nn.LeakyReLU(),
     ):
         super().__init__()
         self.a = a
@@ -36,9 +37,9 @@ class Committor(pl.LightningModule):
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_width = n_hidden_width
         # input is all values -a->b, excluding -a and b (terminal states)
-        layers = [nn.Linear(a + b - 1, n_hidden_width), nn.LeakyReLU()]
+        layers = [nn.Linear(a + b - 1, n_hidden_width), hidden_activation]
         for _ in range(n_hidden_layers):
-            layers += [nn.Linear(n_hidden_width, n_hidden_width), nn.LeakyReLU()]
+            layers += [nn.Linear(n_hidden_width, n_hidden_width), hidden_activation]
         layers += [nn.Linear(n_hidden_width, 1), nn.Sigmoid()]
         self.u = nn.Sequential(*layers)
 
@@ -48,11 +49,18 @@ class Committor(pl.LightningModule):
         u = self.p_hit_b()
         # detailed balance loss
         # https://danjenson.github.io/notes/papers/gflownet-foundations#transitions-parameterization-edge-decomposable-loss-detailed-balance
-        loss = torch.square(
-            torch.log((d + u[:-1] * self.p) / (d + u[1:] * self.q))
-        ).sum()
-        loss += torch.square(torch.log((d + u[-1] * self.p) / (d + r_b)))  # s->s_b
-        loss += torch.square(torch.log((d + u[0] * self.q) / (d + r_a)))  # s->s_-a
+
+        # with log => causes distortion
+        # loss = torch.square(
+        #     torch.log((d + u[:-1] * self.p) / (d + u[1:] * self.q))
+        # ).sum()
+        # loss += torch.square(torch.log((d + u[-1] * self.p) / (d + r_b)))  # s->s_b
+        # loss += torch.square(torch.log((d + u[0] * self.q) / (d + r_a)))  # s->s_-a
+
+        # without log
+        loss = torch.square((u[:-1] * self.p - u[1:] * self.q)).sum()
+        loss += torch.square(u[-1] * self.p - r_b * self.q)
+        loss += torch.square(u[0] * self.q - r_a)
         return loss
 
     def p_hit_b(self):
@@ -79,9 +87,9 @@ def p_hit_b(a, b, p):
 
 
 if __name__ == "__main__":
-    a, b, p = 3, 3, 0.49
+    a, b, p = 3, 3, 0.25
     committor = Committor(a, b, p)
-    trainer = Trainer(max_steps=100)
+    trainer = Trainer(max_steps=200)
     trainer.fit(committor)
-    print("est committor:", committor.p_hit_b().detach().numpy().round(2))
-    print("true committor:", p_hit_b(a, b, p).round(2))
+    print("est committor:", committor.p_hit_b().detach().numpy().round(3))
+    print("true committor:", p_hit_b(a, b, p).round(3))
