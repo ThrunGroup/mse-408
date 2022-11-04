@@ -50,6 +50,11 @@ class Committor(pl.LightningModule):
         # detailed balance loss
         # https://danjenson.github.io/notes/papers/gflownet-foundations#transitions-parameterization-edge-decomposable-loss-detailed-balance
 
+        # without log
+        loss = torch.square((u[:-1] * self.p - u[1:] * self.q)).sum()
+        loss += torch.square(u[-1] * self.p - r_b * self.q)
+        loss += torch.square(u[0] * self.q - r_a * self.p)
+
         # with log => causes distortion
         # loss = torch.square(
         #     torch.log((d + u[:-1] * self.p) / (d + u[1:] * self.q))
@@ -57,10 +62,6 @@ class Committor(pl.LightningModule):
         # loss += torch.square(torch.log((d + u[-1] * self.p) / (d + r_b)))  # s->s_b
         # loss += torch.square(torch.log((d + u[0] * self.q) / (d + r_a)))  # s->s_-a
 
-        # without log
-        loss = torch.square((u[:-1] * self.p - u[1:] * self.q)).sum()
-        loss += torch.square(u[-1] * self.p - r_b * self.q)
-        loss += torch.square(u[0] * self.q - r_a)
         return loss
 
     def p_hit_b(self):
