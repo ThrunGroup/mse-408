@@ -42,20 +42,22 @@ class Committor(pl.LightningModule):
         self.u = nn.Sequential(*layers)
 
     def training_step(self, _batch, _batch_idx):
-        # TODO: alternative is to create the full u-vector and replace first and last values
+        d = 10e-5
+        r_b, r_a = 1, 0
         u = self.p_hit_b()
-        loss = torch.square(u[:-1] * self.p / (u[1:] * self.q)).mean()
-        self.log("loss", loss)
+        # detailed balance loss
+        # https://danjenson.github.io/notes/papers/gflownet-foundations#transitions-parameterization-edge-decomposable-loss-detailed-balance
+        loss = torch.square(
+            torch.log((d + u[:-1] * self.p) / (d + u[1:] * self.q))
+        ).sum()
+        loss += torch.square(torch.log((d + u[-1] * self.p) / (d + r_b)))  # s->s_b
+        loss += torch.square(torch.log((d + u[0] * self.q) / (d + r_a)))  # s->s_-a
         return loss
 
     def p_hit_b(self):
         x = torch.arange(self.a + self.b - 1)
         x = nn.functional.one_hot(x, self.a + self.b - 1).float()
-        u = self.u(x).squeeze()
-        r = torch.empty(self.a + self.b + 1)
-        r[0], r[-1] = 0.0001, 1.0
-        r[1:-1] = u
-        return r
+        return self.u(x).squeeze()
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -63,21 +65,22 @@ class Committor(pl.LightningModule):
 
     @classmethod
     def train_dataloader(cls):
+        # NOTE: triggers the training step, the data isn't used
         return InfiniteIterableDataset()
 
 
 def p_hit_b(a, b, p):
     """True probability of hitting `b` before `-a` with success probability `p`."""
     n = a + b
-    n_1 = np.arange(n + 1)
+    n_1 = np.arange(1, n)
     q_div_p = (1 - p) / p
     return (1 - q_div_p**n_1) / (1 - q_div_p ** (n))
 
 
 if __name__ == "__main__":
-    a, b, s0, p = 5, 5, 0, 0.49
+    a, b, p = 3, 3, 0.49
     committor = Committor(a, b, p)
-    trainer = Trainer(max_steps=5)
+    trainer = Trainer(max_steps=100)
     trainer.fit(committor)
-    print(committor.p_hit_b())
-    print(p_hit_b(a, b, p))
+    print("est committor:", committor.p_hit_b().detach().numpy().round(2))
+    print("true committor:", p_hit_b(a, b, p).round(2))
