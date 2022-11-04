@@ -88,9 +88,9 @@ def p_hit_b(a, b, p):
 
 
 if __name__ == "__main__":
-    a, b, p = 3, 3, 0.25
+    a, b, p = 5, 5, 0.1
     committor = Committor(a, b, p)
-    trainer = Trainer(max_steps=200)
+    trainer = Trainer(max_steps=1000)
     trainer.fit(committor)
     print("est committor:", committor.p_hit_b().detach().numpy().round(3))
     print("true committor:", p_hit_b(a, b, p).round(3))
