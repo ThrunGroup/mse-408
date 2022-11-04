@@ -35,6 +35,7 @@ class Committor(pl.LightningModule):
         self.q = 1 - p
         self.n_hidden_layers = n_hidden_layers
         self.n_hidden_width = n_hidden_width
+        # input is all values -a->b, excluding -a and b (terminal states)
         layers = [nn.Linear(a + b - 1, n_hidden_width), nn.LeakyReLU()]
         for _ in range(n_hidden_layers):
             layers += [nn.Linear(n_hidden_width, n_hidden_width), nn.LeakyReLU()]
