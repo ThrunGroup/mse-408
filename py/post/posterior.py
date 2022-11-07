@@ -2,6 +2,7 @@
 from typing import Callable, Union
 
 import numpy as np
+import pytorch_lightning as pl
 import torch
 
 
@@ -22,4 +23,12 @@ class PosteriorEnv:
         pass
 
     def step(**kwargs):
+        pass
+
+
+class PosteriorGFN(pl.LightningModule):
+    def __init__(self):
+        pass
+
+    def sample(self, n: int) -> torch.Tensor:
         pass
