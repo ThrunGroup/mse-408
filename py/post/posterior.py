@@ -29,12 +29,12 @@ class PosteriorEnv:
         likelihood: Callable,
         batch_size=32,
     ):
-        self.params = params
+        self.params = list(params)
         self.value = [np.linspace(p.min, p.max, p.n) for p in params]
         self.data = data
         self.likelihood = likelihood
         self.batch_size = batch_size
-        self.s0 = np.zeros(len(params))
+        self.s0 = np.zeros(len(params), dtype=np.int64)
 
     def reward(self, state: np.ndarray) -> float:
         d = {self.params[i].name: self.value[i][s] for i, s in enumerate(state)}
@@ -44,17 +44,19 @@ class PosteriorEnv:
         return self.likelihood(**d)
 
     def step(self, state: np.ndarray, action: int):
+        assert action >= 0 and action <= len(self.params), "invalid action!"
+        state = np.copy(state)
+        is_terminal = False
+        is_stop_action = action == len(self.params)
         if action < len(self.params):
             state[action] += 1
-        is_stop_action = action == len(self.params)
-        is_terminal = state[action] == self.params[action].n - 1
+            is_terminal = state[action] == self.params[action].n - 1
         done = is_stop_action or is_terminal
         reward = 0 if not done else self.reward(state)
         return state, reward
 
     def parent_transitions(self, state: np.ndarray, action: int):
         is_stop_action = action == len(self.params)
-        is_terminal = state[action] == self.params[action].n - 1
         if is_stop_action:
             # When the stop action is used, the state does not change; in
             # this case, the "parent" of the current (terminal) state is

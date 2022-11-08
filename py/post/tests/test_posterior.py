@@ -29,11 +29,32 @@ def test_posterior_env_bernoulli():
         param_p,
         data=np.zeros(batch_size),
         likelihood=lambda x, p: stats.bernoulli.pmf(x, p).prod(),
-        batch_size=32,
+        batch_size=batch_size,
     )
-    s1 = env.step(env.s0, 0)
-    assert env.reward(env.s0)[0] == 0.9801, "Incorrect reward!"
-    assert env.reward(s1)[0].round(4) == 0.9603, "Incorrect reward!"
+    # NOTE: 1 is the stop action
+    # stop in s0
+    action = 1
+    s0f, r0 = env.step(env.s0, action)
+    parents, _ = env.parent_transitions(env.s0, action)
+    assert s0f == env.s0, "Incorrect step!"
+    assert np.isclose(r0, 0.9801), "Incorrect reward!"
+    assert len(parents) == 1, "s0f should have only 1 parent!"
+    # step to s1
+    action = 0
+    s1, r1 = env.step(env.s0, action)
+    parents, _ = env.parent_transitions(s1, action)
+    assert s1 == np.array([1]), "Incorrect step!"
+    assert np.isclose(r1, 0), "Incorrect reward!"
+    assert len(parents) == 1, "s1 should have only 1 parent!"
+    # stop in s1
+    action = 1
+    s1f, rf = env.step(s1, action)
+    parents, _ = env.parent_transitions(s1f, action)
+    assert s1f == s1, "Incorrect step!"
+    assert np.isclose(rf, 0.9604), "Incorrect reward!"
+    assert len(parents) == 1, "s1f should have only 1 parent!"
+
+    batch_size = 16
     env.data = stats.bernoulli.rvs(p, size=batch_size)
     # gfn = PosteriorGFN(env)
     # trainer = Trainer(max_steps=1000)
@@ -48,12 +69,11 @@ def test_posterior_env_normal():
     mu, sigma, batch_size = 2, 2, 32
     param_mu = Param(name="mu", min=-16, max=16, n=100)
     param_sigma = Param(name="sigma", min=0.01, max=10, n=100)
-    data = stats.norm.rvs(mu, sigma, size=64)
     env = PosteriorEnv(
         param_mu,
         param_sigma,
-        data=data,
-        likelihood=lambda x, mu, sigma: stats.norm.pmf(x, mu, sigma).prod(),
+        data=stats.norm.rvs(mu, sigma, batch_size),
+        likelihood=lambda x, mu, sigma: stats.norm.pdf(x, mu, sigma).prod(),
         batch_size=batch_size,
     )
     assert env.s0[0] == 0, "Incorrect s0!"
