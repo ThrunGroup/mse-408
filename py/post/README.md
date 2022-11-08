@@ -11,3 +11,5 @@
 - reread continuous flow in gfn foundations
 - consult cfns to extend this
 - convert to trajectory balance?
+- sequential resolution grid posterior
+- empirical kl divergence as loss
