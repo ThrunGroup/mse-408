@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from collections import namedtuple
 from typing import Callable, Union
+import queue
 
 import numpy as np
 import pytorch_lightning as pl
@@ -77,7 +78,22 @@ class PosteriorEnv:
         return np.array(parents), np.array(actions)
 
 
-class PosteriorGFN(pl.LightningModule):
+def sample(env, q_states, q_states_actions, stop_sampling):
+    while not stop_sampling.is_set():
+        try:
+            state, action = q_states_actions.get(timeout=0.1)
+        except queue.Empty:
+            continue
+        next_state, reward = env.step(state, action)
+        # NOTE: if these queues are ever specified with a maxsize, a timeout
+        # will be required for `put` operations to avoid deadlocks
+        if reward:  # terminal state
+            q_states.put(env.s0)
+        else:
+            q_states.put(next_state)
+
+
+class GFN(pl.LightningModule):
     def __init__(self):
         pass
 

@@ -56,7 +56,7 @@ def test_posterior_env_bernoulli():
 
     batch_size = 16
     env.data = stats.bernoulli.rvs(p, size=batch_size)
-    # gfn = PosteriorGFN(env)
+    # gfn = GFN(env)
     # trainer = Trainer(max_steps=1000)
     # trainer.fit(gfn)
     # samples = gfn.sample(n=1000).numpy()
