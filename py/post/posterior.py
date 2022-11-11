@@ -80,7 +80,7 @@ class PosteriorEnv:
         return np.array(parents), np.array(actions)
 
     def loss(self, model: nn.Module, trajectories: list[list[int]]):
-        unique_states = set([s for t in trajectories for s in t])
+        unique_states = list(set([s for t in trajectories for s in t]))
         with mp.Pool() as pool:
             pool.starmap(parent_transitions, [(self, s) for s in unique_states])
 
