@@ -2,10 +2,12 @@
 from collections import namedtuple
 from typing import Callable, Union
 import queue
+import multiprocessing as mp
 
 import numpy as np
 import pytorch_lightning as pl
 import torch
+from torch import nn
 
 
 def flow_matching_loss(
@@ -77,8 +79,13 @@ class PosteriorEnv:
                 actions.append(action)
         return np.array(parents), np.array(actions)
 
+    def loss(self, model: nn.Module, trajectories: list[list[int]]):
+        unique_states = set([s for t in trajectories for s in t])
+        with mp.Pool() as pool:
+            pool.starmap(parent_transitions, [(self, s) for s in unique_states])
 
-def sample(env, q_states, q_states_actions, stop_sampling):
+
+def parent_transitions(env: PosteriorEnv, states: set[int]):
     while not stop_sampling.is_set():
         try:
             state, action = q_states_actions.get(timeout=0.1)
@@ -94,7 +101,8 @@ def sample(env, q_states, q_states_actions, stop_sampling):
 
 
 class GFN(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, env):
+
         pass
 
     def sample(self, n: int) -> np.ndarray:

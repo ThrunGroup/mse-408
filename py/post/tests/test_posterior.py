@@ -4,7 +4,7 @@ import pytest
 from pytorch_lightning import Trainer
 from scipy import stats
 
-from posterior import Param, PosteriorEnv, PosteriorGFN, flow_matching_loss
+from posterior import Param, PosteriorEnv, GFN, flow_matching_loss
 
 
 @pytest.mark.parametrize(
