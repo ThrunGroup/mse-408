@@ -22,7 +22,6 @@ def test_flow_matching_loss(inflow, outflow, delta, loss):
 
 
 def test_posterior_env_bernoulli():
-    np.random.seed(0)
     p, batch_size = 0.25, 2
     param_p = Param(name="p", min=0.01, max=0.99, n=99)
     env = PosteriorEnv(
@@ -34,34 +33,36 @@ def test_posterior_env_bernoulli():
     # NOTE: 1 is the stop action
     # stop in s0
     action = 1
-    s0f, r0 = env.step(env.s0, action)
-    parents, _ = env.parent_transitions(env.s0, action)
-    assert s0f == env.s0, "Incorrect step!"
-    assert np.isclose(r0, 0.9801), "Incorrect reward!"
-    assert len(parents) == 1, "s0f should have only 1 parent!"
+    step = env.step(env.s0, action)
+    parents, _ = env.parent_transitions(step.state, action)
+    assert step.next_state == env.s0, "Incorrect step!"
+    assert np.isclose(step.reward, 0.9801), "Incorrect reward!"
+    assert len(parents) == 1, "state should have only 1 parent!"
     # step to s1
     action = 0
-    s1, r1 = env.step(env.s0, action)
-    parents, _ = env.parent_transitions(s1, action)
-    assert s1 == np.array([1]), "Incorrect step!"
-    assert np.isclose(r1, 0), "Incorrect reward!"
-    assert len(parents) == 1, "s1 should have only 1 parent!"
+    step = env.step(env.s0, action)
+    parents, _ = env.parent_transitions(step.next_state, action)
+    assert step.next_state == np.array([1]), "Incorrect step!"
+    assert np.isclose(step.reward, 0), "Incorrect reward!"
+    assert len(parents) == 1, "state should have only 1 parent!"
     # stop in s1
     action = 1
-    s1f, rf = env.step(s1, action)
-    parents, _ = env.parent_transitions(s1f, action)
-    assert s1f == s1, "Incorrect step!"
-    assert np.isclose(rf, 0.9604), "Incorrect reward!"
-    assert len(parents) == 1, "s1f should have only 1 parent!"
-
+    step = env.step(step.next_state, action)
+    parents, _ = env.parent_transitions(step.next_state, action)
+    assert step.state == step.next_state, "Incorrect step!"
+    assert np.isclose(step.reward, 0.9604), "Incorrect reward!"
+    assert len(parents) == 1, "state should have only 1 parent!"
     # test state_to_tensor
-    t = env.state_to_tensor(env.s0)
-    assert t.sum().item() == 1, "Incorrect tensor from state!"
-    assert t[0].item() == 1, "Incorrect tensor from state!"
+    t = env.states_to_tensors([np.array([0]), np.array([1])])
+    assert t.sum() == 2, "Incorrect tensor from state!"
+    assert t[0][0] == 1, "Incorrect tensor from state!"
+    assert t.sum() == 2, "Incorrect tensor from state!"
+    assert t[1][1] == 1, "Incorrect tensor from state!"
 
+    np.random.seed(0)
     batch_size = 16
     env.data = stats.bernoulli.rvs(p, size=batch_size)
-    # gfn = GFN(env)
+    gfn = GFN(env)
     # trainer = Trainer(max_steps=1000)
     # trainer.fit(gfn)
     # samples = gfn.sample(n=1000).numpy()
