@@ -79,25 +79,17 @@ class PosteriorEnv:
                 actions.append(action)
         return np.array(parents), np.array(actions)
 
-    def loss(self, model: nn.Module, trajectories: list[list[int]]):
+    # [[(a, s_{t}), (a, s_{t+1})]]
+    def loss(self, model: nn.Module, trajectories: list[(s, a)]):
         unique_states = list(set([s for t in trajectories for s in t]))
         with mp.Pool() as pool:
-            pool.starmap(parent_transitions, [(self, s) for s in unique_states])
+            parents_actions = pool.starmap(
+                parent_transitions, [(self, s) for s in unique_states]
+            )
 
 
-def parent_transitions(env: PosteriorEnv, states: set[int]):
-    while not stop_sampling.is_set():
-        try:
-            state, action = q_states_actions.get(timeout=0.1)
-        except queue.Empty:
-            continue
-        next_state, reward = env.step(state, action)
-        # NOTE: if these queues are ever specified with a maxsize, a timeout
-        # will be required for `put` operations to avoid deadlocks
-        if reward:  # terminal state
-            q_states.put(env.s0)
-        else:
-            q_states.put(next_state)
+def parent_transitions(env: PosteriorEnv, state: int, action: int):
+    pass
 
 
 class GFN(pl.LightningModule):
