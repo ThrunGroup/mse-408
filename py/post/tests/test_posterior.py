@@ -4,7 +4,7 @@ import pytest
 from pytorch_lightning import Trainer
 from scipy import stats
 
-from posterior import Param, PosteriorEnv, GFN, flow_matching_loss
+from posterior import GFN, Param, PosteriorEnv, flow_matching_loss
 
 
 @pytest.mark.parametrize(
@@ -53,6 +53,11 @@ def test_posterior_env_bernoulli():
     assert s1f == s1, "Incorrect step!"
     assert np.isclose(rf, 0.9604), "Incorrect reward!"
     assert len(parents) == 1, "s1f should have only 1 parent!"
+
+    # test state_to_tensor
+    t = env.state_to_tensor(env.s0)
+    assert t.sum().item() == 1, "Incorrect tensor from state!"
+    assert t[0].item() == 1, "Incorrect tensor from state!"
 
     batch_size = 16
     env.data = stats.bernoulli.rvs(p, size=batch_size)

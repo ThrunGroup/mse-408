@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-from collections import namedtuple
-from typing import Callable, Union
-import queue
 import multiprocessing as mp
+import queue
+from collections import namedtuple
+from typing import Callable, Tuple, Union
 
 import numpy as np
 import pytorch_lightning as pl
@@ -79,13 +79,22 @@ class PosteriorEnv:
                 actions.append(action)
         return np.array(parents), np.array(actions)
 
-    # [[(a, s_{t}), (a, s_{t+1})]]
-    def loss(self, model: nn.Module, trajectories: list[(s, a)]):
-        unique_states = list(set([s for t in trajectories for s in t]))
+    # [(a_1, s), ..., (a_n, s_n)]
+    def loss(self, model: nn.Module, trajectories: list[list[Tuple[int, int]]]):
+        states = [s[1] for t in trajectories for s in t]
+        unique_states = list(set(states))
+        parents_actions = []
         with mp.Pool() as pool:
             parents_actions = pool.starmap(
                 parent_transitions, [(self, s) for s in unique_states]
             )
+        d = dict(zip(unique_states, parents_actions))
+        # represent states as k-hot vectors
+        # collect flow from parents
+        # collect outflow from states
+
+    def state_to_tensor(self, state: np.ndarray) -> torch.Tensor:
+        pass
 
 
 def parent_transitions(env: PosteriorEnv, state: int, action: int):
