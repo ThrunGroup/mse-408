@@ -1,8 +1,13 @@
-use tch::{Device, Tensor};
+use std::ops::Index;
+use tch::Tensor;
+
+pub trait Flows<F, Idx>: Index<Idx, Output = F> + Iterator<Item = F> {}
+
+impl Flows<Tensor, Tensor> for Tensor {
+    // TODO
+}
 
 fn main() {
-    let device = Device::cuda_if_available();
-    let t = Tensor::of_slice(&[3, 1, 4, 1, 5]).to(device);
-    let t = t * 2;
-    t.print();
+    let t: Box<dyn Flows<Tensor, Tensor>> =
+        Box::new(Tensor::of_slice(&[3, 1, 4, 1, 5]));
 }
