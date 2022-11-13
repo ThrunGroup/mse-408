@@ -1,7 +1,15 @@
-// helper functions for environment in rust
+use std::ops::Index;
 
-trait Flow<F> {
-    fn flow(&self) -> F;
+trait Flows<F, Idx>: Index<Idx, Output = F> + Iterator<Item = F> {}
+
+trait Transitions<S, A, Idx>:
+    Index<Idx, Output = Transition<S, A>> + Iterator<Item = Transition<S, A>>
+{
+}
+
+trait StateFlow {
+    fn in_flows<F, Idx>(&self) -> dyn Flows<F, Idx>;
+    fn out_flows<F, Idx>(&self) -> dyn Flows<F, Idx>;
 }
 
 trait Action {
@@ -9,20 +17,13 @@ trait Action {
     fn is_stop(&self) -> bool;
 }
 
-trait DiscreteState<F: Sized>: Sized {
-    fn in_flows(&self) -> Vec<Box<dyn Flow<F>>>;
-    fn out_flows(&self) -> Vec<Box<dyn Flow<F>>>;
-}
-
-trait ContinuousState: Sized {}
-
-trait Environment<S, A: Action, R> {
-    fn step(&self, state: S, action: A) -> Step<S, A, R>;
-    fn flow(&self, transition: Transition<S, A>) -> Box<dyn Flow<R>>;
+trait Environment<S, A: Action, F, Idx> {
+    fn step(&self, state: S, action: A) -> Step<S, A, F>;
+    fn flow(&self, transition: Transition<S, A>) -> F;
     fn flows(
         &self,
-        transitions: Vec<Transition<S, A>>,
-    ) -> Vec<Box<dyn Flow<R>>>;
+        transitions: dyn Transitions<S, A, Idx>,
+    ) -> dyn Flows<F, Idx>;
 }
 
 struct Transition<S, A> {
