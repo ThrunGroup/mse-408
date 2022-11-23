@@ -1,29 +1,20 @@
-use std::ops::Index;
+use std::collections::HashMap;
+use tch::Tensor;
 
-pub trait Flows<F, Idx>: Index<Idx, Output = F> + Iterator<Item = F> {}
-
-pub trait Transitions<S, A, Idx>:
-    Index<Idx, Output = Transition<S, A>> + Iterator<Item = Transition<S, A>>
-{
+/// This defines the contract for all states.
+pub trait State {
+    fn is_initial(&self) -> bool;
+    fn is_terminal(&self) -> bool;
 }
 
-pub trait StateFlow {
-    fn in_flows<F, Idx>(&self) -> dyn Flows<F, Idx>;
-    fn out_flows<F, Idx>(&self) -> dyn Flows<F, Idx>;
-}
-
+/// This defines the contract for all actions.
 pub trait Action {
     fn is_terminal(&self) -> bool;
-    fn is_stop(&self) -> bool;
 }
 
-pub trait Environment<S, A: Action, F, Idx> {
-    fn step(&self, state: S, action: A) -> Step<S, A, F>;
-    fn flow(&self, transition: Transition<S, A>) -> F;
-    fn flows(
-        &self,
-        transitions: dyn Transitions<S, A, Idx>,
-    ) -> dyn Flows<F, Idx>;
+pub trait Environment<S, A: Action, R, Idx> {
+    fn step(&self, state: S, action: A) -> Step<S, A, R>;
+    fn reward(&self, transition: Transition<S, A>) -> R;
 }
 
 pub struct Transition<S, A> {
@@ -35,4 +26,12 @@ pub struct Transition<S, A> {
 pub struct Step<S, A, R> {
     pub transition: Transition<S, A>,
     pub reward: R,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_trajectory_balance_loss() {}
 }
