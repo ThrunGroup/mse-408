@@ -1,7 +1,7 @@
 use gfn::{Action, Environment, State, Step, Transition};
-use tch::Tensor;
+use tch::{Scalar, Tensor};
 
-#[derive(Debug, Copy)]
+#[derive(Debug)]
 struct HypergridState {
     coordinate: Tensor,
     n_per_dim: usize,
@@ -9,7 +9,7 @@ struct HypergridState {
     x_max: f64,
 }
 
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 struct HypergridAction {
     direction: usize,
     terminal: usize,
@@ -20,7 +20,7 @@ struct Hypergrid {}
 impl HypergridState {
     fn apply(&self, action: usize) -> Result<Self, &str> {
         if action.is_terminal() {
-            return self.copy();
+            return self.clone();
         }
         let mut coordinate = self.coordinate.copy();
         coordinate[action.direction] += 1;
@@ -34,6 +34,8 @@ impl HypergridState {
         }
     }
 
+    fn x(&self) -> Tensor {}
+
     fn initial(&self) -> Self {
         Self {
             coordinate: self.coordinate.zeros_like(),
@@ -42,9 +44,18 @@ impl HypergridState {
     }
 }
 
+impl Clone for HypergridState {
+    fn clone(&self) -> Self {
+        Self {
+            coordinate: self.coordinate.copy(),
+            ..*self
+        }
+    }
+}
+
 impl State for HypergridState {
     fn is_initial(&self) -> bool {
-        self.coordinate.sum(self.coordinate.kind())
+        self.coordinate.sum(self.coordinate.kind()) == Tensor::zeros(1.0)
     }
 
     fn is_terminal(&self) -> bool {
