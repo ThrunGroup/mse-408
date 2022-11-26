@@ -1,4 +1,4 @@
-use gfn::env::hypergrid::Hypergrid;
+use gfn::env::hypergrid::Hypercube;
 use tch::Tensor;
 
 fn main() {

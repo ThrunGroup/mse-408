@@ -23,6 +23,7 @@ pub trait Environment: Clone {
         state: &Self::S,
         action: &Self::A,
     ) -> Result<Step<Self::S, Self::A, Self::R>, InvalidTransitionError>;
+    fn sample(&self, state: &Self::S) -> Self::A;
     fn reward(&self, transition: &Transition<Self::S, Self::A>) -> Self::R;
 }
 

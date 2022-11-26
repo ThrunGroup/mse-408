@@ -1,19 +1,19 @@
 use crate::{
     Action, Environment, InvalidTransitionError, State, Step, Transition,
 };
-use ndarray::{Array, Array1, ArrayView1, Axis, Ix1};
+use ndarray::{Array, Array1, Axis};
 
 // TODO(danj): rewards function
 // TODO(danj): loss function
 // TODO(danj): training loop
 
 #[derive(Debug, Clone)]
-pub struct HypergridState {
+pub struct HypercubeState {
     coordinate: Array1<usize>,
     n_per_dim: usize,
 }
 
-impl State for HypergridState {
+impl State for HypercubeState {
     fn is_initial(&self) -> bool {
         self.coordinate.sum() == 0
     }
@@ -23,7 +23,7 @@ impl State for HypergridState {
     }
 }
 
-impl HypergridState {
+impl HypercubeState {
     pub fn new(n_dims: usize, n_per_dim: usize) -> Self {
         Self {
             coordinate: Array1::zeros(n_dims),
@@ -33,7 +33,7 @@ impl HypergridState {
 
     fn apply(
         &self,
-        action: &HypergridAction,
+        action: &HypercubeAction,
     ) -> Result<Self, InvalidTransitionError> {
         if action.is_terminal() {
             return Ok(self.clone());
@@ -52,12 +52,12 @@ impl HypergridState {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct HypergridAction {
+pub struct HypercubeAction {
     direction: usize,
     terminal: usize,
 }
 
-impl Action for HypergridAction {
+impl Action for HypercubeAction {
     fn is_terminal(&self) -> bool {
         self.direction == self.terminal
     }
@@ -71,15 +71,15 @@ impl Action for HypergridAction {
 }
 
 #[derive(Clone)]
-pub struct Hypergrid {
-    s0: HypergridState,
+pub struct Hypercube {
+    s0: HypercubeState,
     x_space: Array1<f64>,
     r: fn(x: &Array1<f64>) -> f64,
 }
 
-impl Environment for Hypergrid {
-    type S = HypergridState;
-    type A = HypergridAction;
+impl Environment for Hypercube {
+    type S = HypercubeState;
+    type A = HypercubeAction;
     type R = f64;
 
     fn s0(&self) -> Self::S {
@@ -100,9 +100,13 @@ impl Environment for Hypergrid {
         Ok(Step { transition, reward })
     }
 
+    fn sample(&self, state: &Self::S) -> Self::A {
+        // TODO(danj): use model to sample state
+    }
+
     fn reward(
         &self,
-        transition: &Transition<HypergridState, HypergridAction>,
+        transition: &Transition<HypercubeState, HypercubeAction>,
     ) -> f64 {
         let x = self.x_space.select(
             Axis(0),
@@ -112,7 +116,7 @@ impl Environment for Hypergrid {
     }
 }
 
-impl Hypergrid {
+impl Hypercube {
     pub fn new(
         n_dims: usize,
         n_per_dim: usize,
@@ -121,7 +125,7 @@ impl Hypergrid {
         r: fn(&Array1<f64>) -> f64,
     ) -> Self {
         Self {
-            s0: HypergridState::new(n_dims, n_per_dim),
+            s0: HypercubeState::new(n_dims, n_per_dim),
             x_space: Array::linspace(x_min, x_max, n_per_dim),
             r,
         }
@@ -140,13 +144,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_hypergrid() {
-        let n_dims = 2;
-        let grid = Hypergrid::new(n_dims, 8, -1.0, 1.0, corners);
+    fn test_hypercube() {
+        let (n_dims, n_per_dim, x_min, x_max) = (2, 8, -1.0, 1.0);
+        let grid = Hypercube::new(n_dims, n_per_dim, x_min, x_max, corners);
         let s0 = grid.s0();
-        let a0 = HypergridAction::new(n_dims);
-        let step = grid.step(s0, a0);
-        let r = grid.reward(step.transition);
+        let a0 = grid.sample(&s0);
+        let step = grid.step(&s0, &a0).expect("simple step error!");
+        let r = grid.reward(&step.transition);
         assert_eq!(r, -1.0);
     }
 }

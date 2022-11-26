@@ -1,1 +1,1 @@
-pub mod hypergrid;
+pub mod hypercube;
