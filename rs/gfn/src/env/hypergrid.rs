@@ -1,25 +1,16 @@
 use crate::{
     Action, Environment, InvalidTransitionError, State, Step, Transition,
 };
-use ndarray::{Array, Array1, ArrayView1, Ix1};
+use ndarray::{Array, Array1, ArrayView1, Axis, Ix1};
 
 // TODO(danj): rewards function
 // TODO(danj): loss function
 // TODO(danj): training loop
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HypergridState {
     coordinate: Array1<usize>,
     n_per_dim: usize,
-}
-
-impl Clone for HypergridState {
-    fn clone(&self) -> Self {
-        Self {
-            coordinate: self.coordinate.clone(),
-            ..*self
-        }
-    }
 }
 
 impl State for HypergridState {
@@ -70,13 +61,20 @@ impl Action for HypergridAction {
     fn is_terminal(&self) -> bool {
         self.direction == self.terminal
     }
+
+    fn terminate(&self) -> Self {
+        Self {
+            direction: self.terminal,
+            terminal: self.terminal,
+        }
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Hypergrid {
     s0: HypergridState,
     x_space: Array1<f64>,
-    r: fn(x: &ArrayView1<f64>) -> f64,
+    r: fn(x: &Array1<f64>) -> f64,
 }
 
 impl Environment for Hypergrid {
@@ -106,7 +104,10 @@ impl Environment for Hypergrid {
         &self,
         transition: &Transition<HypergridState, HypergridAction>,
     ) -> f64 {
-        let x = self.x(&transition.next_state);
+        let x = self.x_space.select(
+            Axis(0),
+            transition.next_state.coordinate.as_slice().unwrap(),
+        );
         (self.r)(&x)
     }
 }
@@ -117,7 +118,7 @@ impl Hypergrid {
         n_per_dim: usize,
         x_min: f64,
         x_max: f64,
-        r: fn(&ArrayView1<f64>) -> f64,
+        r: fn(&Array1<f64>) -> f64,
     ) -> Self {
         Self {
             s0: HypergridState::new(n_dims, n_per_dim),
@@ -125,13 +126,9 @@ impl Hypergrid {
             r,
         }
     }
-
-    fn x(&self, state: &HypergridState) -> ArrayView1<f64> {
-        self.x_space.slice::<Ix1>(state.coordinate)
-    }
 }
 
-fn corners(x: &ArrayView1<f64>) -> f64 {
+fn corners(x: &Array1<f64>) -> f64 {
     // return (ax > 0.5).prod(-1) * 0.5 + ((ax < 0.8) * (ax > 0.6)).prod(-1) * 2
     // + r_0
     // x.gt(&0.5).all().into() as f64 * 0.5
@@ -144,8 +141,12 @@ mod tests {
 
     #[test]
     fn test_hypergrid() {
-        let grid = Hypergrid::new(2, 8, -1.0, 1.0, corners);
-        let x = grid.x(&grid.s0);
-        assert_eq!(x[0], -1.0);
+        let n_dims = 2;
+        let grid = Hypergrid::new(n_dims, 8, -1.0, 1.0, corners);
+        let s0 = grid.s0();
+        let a0 = HypergridAction::new(n_dims);
+        let step = grid.step(s0, a0);
+        let r = grid.reward(step.transition);
+        assert_eq!(r, -1.0);
     }
 }

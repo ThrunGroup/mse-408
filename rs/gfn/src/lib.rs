@@ -9,6 +9,7 @@ pub trait State: Clone {
 
 pub trait Action: Clone {
     fn is_terminal(&self) -> bool;
+    fn terminate(&self) -> Self;
 }
 
 pub trait Environment: Clone {
