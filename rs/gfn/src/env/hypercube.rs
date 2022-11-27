@@ -4,6 +4,7 @@ use crate::{
 use ndarray::{Array, Array1, Axis};
 
 // TODO(danj): rewards function
+// TODO(danj): API
 // TODO(danj): loss function
 // TODO(danj): training loop
 
@@ -73,8 +74,7 @@ impl Action for HypercubeAction {
 #[derive(Clone)]
 pub struct Hypercube {
     s0: HypercubeState,
-    x_space: Array1<f64>,
-    r: fn(x: &Array1<f64>) -> f64,
+    r0: f64,
 }
 
 impl Environment for Hypercube {
@@ -108,35 +108,23 @@ impl Environment for Hypercube {
         &self,
         transition: &Transition<HypercubeState, HypercubeAction>,
     ) -> f64 {
-        let x = self.x_space.select(
-            Axis(0),
-            transition.next_state.coordinate.as_slice().unwrap(),
-        );
-        (self.r)(&x)
+        if !transition.is_terminal() {
+            return 0.0;
+        }
+        let s_t = transition.next_state;
+        let x_abs =
+            (s_t.coordinate / (s_t.n_per_dim - 1) * 2 - 1).mapv(f64::abs);
+        self.r0 + 0.5
     }
 }
 
 impl Hypercube {
-    pub fn new(
-        n_dims: usize,
-        n_per_dim: usize,
-        x_min: f64,
-        x_max: f64,
-        r: fn(&Array1<f64>) -> f64,
-    ) -> Self {
+    pub fn new(n_dims: usize, n_per_dim: usize, r_0: f64) -> Self {
         Self {
             s0: HypercubeState::new(n_dims, n_per_dim),
-            x_space: Array::linspace(x_min, x_max, n_per_dim),
-            r,
+            r0,
         }
     }
-}
-
-fn corners(x: &Array1<f64>) -> f64 {
-    // return (ax > 0.5).prod(-1) * 0.5 + ((ax < 0.8) * (ax > 0.6)).prod(-1) * 2
-    // + r_0
-    // x.gt(&0.5).all().into() as f64 * 0.5
-    0.0
 }
 
 #[cfg(test)]
@@ -145,8 +133,8 @@ mod tests {
 
     #[test]
     fn test_hypercube() {
-        let (n_dims, n_per_dim, x_min, x_max) = (2, 8, -1.0, 1.0);
-        let grid = Hypercube::new(n_dims, n_per_dim, x_min, x_max, corners);
+        let (n_dims, n_per_dim, r0) = (2, 8, 0.01);
+        let grid = Hypercube::new(n_dims, n_per_dim, r0);
         let s0 = grid.s0();
         let a0 = grid.sample(&s0);
         let step = grid.step(&s0, &a0).expect("simple step error!");
