@@ -1,10 +1,17 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Generic, Protocol, Self, TypeVar
 
 from torch import Tensor
 
 S = TypeVar("S", bound="State")
 A = TypeVar("A", bound="Action")
+
+
+class Loss(Enum):
+    FlowMatching = 0
+    DetailedBalance = 1
+    TrajectoryBalance = 3
 
 
 @dataclass(frozen=True)
