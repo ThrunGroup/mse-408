@@ -3,6 +3,8 @@ from typing import Self
 
 import numpy as np
 from core import InvalidTransitionError, Step, Transition
+from torch import Tensor
+from torch.nn import functional as F
 
 
 @dataclass(frozen=True)
@@ -24,6 +26,9 @@ class HypercubeState:
         if coordinate[action.direction] < self.n_per_dim:
             return replace(self, coordinate=coordinate)
         raise InvalidTransitionError
+
+    def into_tensor(self) -> Tensor:
+        return F.one_hot(self.coordinate, self.n_per_dim).flatten()
 
 
 @dataclass(frozen=True)
@@ -48,13 +53,10 @@ class Hypercube:
         self, state: HypercubeState, action: HypercubeAction
     ) -> Step[HypercubeState, HypercubeAction]:
         transition = Transition(state, action, state.apply(action))
-        return Step(transition, self.reward(transition.next_state))
+        return Step(transition, self._reward(transition.next_state))
 
-    def sample(self, state: HypercubeState) -> HypercubeAction:
-        raise NotImplementedError()
-
-    def reward(self, transition):
-        if transition.is_terminal():
+    def _reward(self, transition):
+        if not transition.is_terminal():
             return 0.0
         s_t = transition.next_state
         x_abs = np.abs(s_t / (self.n_per_dim - 1) * 2 - 1)

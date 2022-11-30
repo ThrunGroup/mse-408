@@ -1,5 +1,7 @@
 from dataclasses import dataclass
-from typing import Generic, Protocol, TypeVar
+from typing import Generic, Protocol, Self, TypeVar
+
+from torch import Tensor
 
 S = TypeVar("S", bound="State")
 A = TypeVar("A", bound="Action")
@@ -48,8 +50,17 @@ class Environment(Protocol, Generic[S, A]):
     def step(self, state: S, action: A) -> Step[S, A]:
         ...
 
-    def sample(self, state: S) -> A:
+
+class Sampler(Protocol):
+    def sample(self, state: State) -> Action:
         ...
 
-    def reward(self, transition: Transition[S, A]) -> float:
+
+class IntoTensor(Protocol):
+    def into_tensor(self) -> Tensor:
+        ...
+
+
+class FromTensor(Protocol):
+    def from_tensor(self, tensor: Tensor) -> Self:
         ...
