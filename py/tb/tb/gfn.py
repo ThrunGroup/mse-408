@@ -1,8 +1,6 @@
 from typing import Iterable
 
-from core import Environment, Loss
-from data import StreamingDataset, StreamingQueueAdapter
-from models import MultiLayerPerceptron
+from core import Environment, Loss, Modelable
 
 
 def worker(stream: Iterable):
@@ -11,8 +9,5 @@ def worker(stream: Iterable):
 
 
 class GFN:
-    def __init__(self):
-        raise NotImplementedError("Use GFN.build(...)")
-
-    def build(self, env: Environment, loss: Loss):
-        pass
+    def __init__(self, env: Environment | Modelable, loss: Loss):
+        self.model = env.model(loss)

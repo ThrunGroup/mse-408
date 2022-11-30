@@ -2,6 +2,7 @@ from dataclasses import dataclass, replace
 from typing import Self
 
 import numpy as np
+import torch
 from core import InvalidTransitionError, Step, Transition
 from torch import Tensor
 from torch.nn import functional as F
@@ -28,7 +29,8 @@ class HypercubeState:
         raise InvalidTransitionError
 
     def into_tensor(self) -> Tensor:
-        return F.one_hot(self.coordinate, self.n_per_dim).flatten()
+        t = torch.tensor(self.coordinate, dtype=torch.long)
+        return F.one_hot(t, self.n_per_dim).flatten()
 
 
 @dataclass(frozen=True)
@@ -42,12 +44,18 @@ class HypercubeAction:
 
 @dataclass(frozen=True)
 class Hypercube:
-    n_dims: int
-    n_per_dim: int
-    r_0: float
+    n_dims: int = 2
+    n_per_dim: int = 8
+    r_0: float = 1e-3
 
     def initial_state(self) -> HypercubeState:
         return HypercubeState(np.zeros(self.n_dims), self.n_per_dim)
+
+    def input_shape(self) -> torch.Size:
+        return self.initial_state().into_tensor().shape
+
+    def output_shape(self) -> torch.Size:
+        return torch.Size([self.n_per_dim])
 
     def step(
         self, state: HypercubeState, action: HypercubeAction
