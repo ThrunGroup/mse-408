@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Generic, Iterable, Protocol, Self, TypeVar
 
-from torch import Tensor, nn
+from torch import Tensor
 
 S = TypeVar("S", bound="State")
 A = TypeVar("A", bound="Action")
@@ -66,17 +66,18 @@ class Environment(Protocol, Generic[S, A]):
         ...
 
 
-class Modelable(Protocol):
-    def model(self, loss: Loss) -> "Model":
+class SimpleDiscrete(Protocol):
+    @property
+    def n_states(self) -> int:
+        ...
+
+    @property
+    def n_actions(self) -> int:
         ...
 
 
-class Model(Protocol):
-    def train(self, batch: Any) -> Any:
-        ...
-
-    def predict(self, batch: Any) -> Any:
-        ...
+class SimpleDiscreteEnvironment(Environment, SimpleDiscrete, Protocol):
+    pass
 
 
 class Sampler(Protocol):

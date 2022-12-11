@@ -48,14 +48,16 @@ class Hypercube:
     n_per_dim: int = 8
     r_0: float = 1e-3
 
+    @property
+    def n_states(self) -> int:
+        return self.n_dims * self.n_per_dim
+
+    @property
+    def n_actions(self) -> int:
+        return self.n_dims + 1
+
     def initial_state(self) -> HypercubeState:
         return HypercubeState(np.zeros(self.n_dims), self.n_per_dim)
-
-    def input_shape(self) -> torch.Size:
-        return self.initial_state().into_tensor().shape
-
-    def output_shape(self) -> torch.Size:
-        return torch.Size([self.n_per_dim])
 
     def step(
         self, state: HypercubeState, action: HypercubeAction
