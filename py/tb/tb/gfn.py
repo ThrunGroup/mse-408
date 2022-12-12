@@ -2,7 +2,7 @@ from typing import Iterable
 
 import pytorch_lightning as pl
 import torch
-from core import Loss, SimpleDiscreteEnvironment
+from core import IntoTensor, Loss, SimpleDiscreteEnvironment, Trajectories
 from models import MultiLayerPerceptron
 from torch import Tensor
 
@@ -22,16 +22,26 @@ class GFN(pl.LightningModule):
         self._pb = MultiLayerPerceptron(env.n_states, env.n_actions)
         self._log_z = torch.tensor(0)
 
-    def _trajectory_balance_loss(self, batch):
-        pf_logits = self._pf(batch)
-        pb_logits = self._pb()
-        pass
+    def _trajectory_balance_loss(self, trajectories: Trajectories) -> Tensor:
+        trajs = []
+        actions = []
+        rewards = []
+        for trajectory in trajectories:
+            actions = []
+            states = []
+            for step in trajectory:
+                actions.append(step.transition.action)
+                states.append(step.transition.state.into_tensor())
+        log_f = self._pf(trajectories)
+        log_b = self._pb(trajectories)
+        log_r = torch.log(rewards)
+        return torch.square(self._log_z + log_f - log_b - log_r)
 
-    def forward(self, batch) -> Tensor:
-        return self._pf(batch)
+    def forward(self, states: list[IntoTensor]) -> Tensor:
+        return self._pf(torch.tensor([s.into_tensor() for s in states]))
 
-    def training_step(self, batch, batch_idx) -> float:
-        return 0.0
+    def training_step(self, batch, _batch_idx) -> Tensor:
+        return self._loss(batch)
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=1e-3)

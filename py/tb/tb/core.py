@@ -45,6 +45,10 @@ class Step(Generic[S, A]):
         return self.transition.is_terminal()
 
 
+Trajectory = list[Step]
+Trajectories = list[Trajectory]
+
+
 class State(Protocol):
     def is_initial(self) -> bool:
         ...
