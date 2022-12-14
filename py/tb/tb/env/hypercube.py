@@ -1,11 +1,11 @@
 from dataclasses import dataclass, replace
-from typing import Self
 
 import numpy as np
 import torch
-from core import InvalidTransitionError, Step, Transition
 from torch import Tensor
 from torch.nn import functional as F
+
+from ..core import InvalidTransitionError, Step, Transition
 
 
 @dataclass(frozen=True)
@@ -19,7 +19,7 @@ class HypercubeState:
     def is_terminal(self) -> bool:
         return (self.coordinate == self.n_per_dim - 1).any()
 
-    def apply(self, action: "HypercubeAction") -> Self:
+    def apply(self, action: "HypercubeAction") -> "HypercubeState":
         if action.is_terminal():
             return self
         coordinate = self.coordinate.copy()
@@ -64,6 +64,10 @@ class Hypercube:
     ) -> Step[HypercubeState, HypercubeAction]:
         transition = Transition(state, action, state.apply(action))
         return Step(transition, self._reward(transition.next_state))
+
+    def random_action(self) -> HypercubeAction:
+        """Used for testing."""
+        return HypercubeAction(np.random.randint(self.n_dims + 1), self.n_dims)
 
     def _reward(self, transition):
         if not transition.is_terminal():

@@ -14,14 +14,6 @@ class Loss(Enum):
     TrajectoryBalance = 3
 
 
-@dataclass
-class Parameterization:
-    input_shape: Iterable[int]
-    output_shape: Iterable[int]
-    loss: Loss
-    train: Callable[[Any], float]
-
-
 @dataclass(frozen=True)
 class Transition(Generic[S, A]):
     state: S
