@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Generic, Iterable, Protocol, Self, TypeVar
+from typing import Generic, Protocol, TypeVar
 
 from torch import Tensor
 
