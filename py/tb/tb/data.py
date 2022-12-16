@@ -36,6 +36,15 @@ class IterableMultiprocessQueue(Queue):
         return result
 
 
+class TrajectoryQueueDataset(IterableDataset):
+    def __init__(self, queue: IterableMultiprocessQueue):
+        super().__init__()
+        self.queue = queue
+
+    def __iter__(self):
+        return self.queue
+
+
 class QueueDataset(IterableDataset):
     def __init__(self, queue: IterableMultiprocessQueue):
         super().__init__()
