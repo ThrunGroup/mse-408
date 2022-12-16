@@ -1,12 +1,12 @@
 import multiprocessing as mp
 import pickle
 import time
+from dataclasses import dataclass
 from multiprocessing.queues import Queue
-from typing import Iterable, Protocol
+from typing import Iterable, Protocol, Self
 
+import torch
 from torch.utils.data import IterableDataset
-
-# TODO: need to convert to
 
 
 class IterableMultiprocessQueue(Queue):
@@ -21,7 +21,7 @@ class IterableMultiprocessQueue(Queue):
 
     def close(self):
         self.put(self._sentinal)
-        while not self.empty():
+        while self._buffer:
             time.sleep(0.01)
         super().close()
 
@@ -36,13 +36,52 @@ class IterableMultiprocessQueue(Queue):
         return result
 
 
+@dataclass(frozen=True)
+class TrajectoryTensor:
+    ids: torch.Tensor
+    states: torch.Tensor
+    actions: torch.Tensor
+    rewards: torch.Tensor
+
+    @classmethod
+    def from_many(cls, batch: list[Self]) -> Self:
+        ids, states, actions, rewards = [], [], [], []
+        for tt in batch:
+            ids.append(tt.ids)
+            states.append(tt.states)
+            actions.append(tt.actions)
+            rewards.append(tt.rewards)
+        return TrajectoryTensor(
+            torch.hstack(ids),
+            torch.vstack(states),
+            torch.vstack(actions),
+            torch.tensor(rewards),
+        )
+
+
 class TrajectoryQueueDataset(IterableDataset):
     def __init__(self, queue: IterableMultiprocessQueue):
         super().__init__()
         self.queue = queue
 
     def __iter__(self):
-        return self.queue
+        for tid, traj in self.queue:
+            states, actions, reward = [], [], 0
+            for step in traj:
+                tr = step.transition
+                states.append(tr.state.into_tensor())
+                actions.append(tr.action.into_tensor())
+                reward = step.reward
+            yield TrajectoryTensor(
+                torch.tensor(tid).repeat(len(traj)),
+                torch.vstack(states),
+                torch.vstack(actions),
+                torch.tensor([reward]),
+            )
+
+
+def trajectory_collator(batch):
+    return TrajectoryTensor.from_many(batch)
 
 
 class QueueDataset(IterableDataset):

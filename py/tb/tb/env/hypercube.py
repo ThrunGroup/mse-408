@@ -41,6 +41,9 @@ class HypercubeAction:
     def is_terminal(self) -> bool:
         return self.direction == self.terminal
 
+    def into_tensor(self) -> Tensor:
+        return torch.tensor(self.direction)
+
 
 @dataclass(frozen=True)
 class Hypercube:
