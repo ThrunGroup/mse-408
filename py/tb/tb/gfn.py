@@ -8,6 +8,7 @@ from torch import Tensor
 # TODO(danj): How to interleave on-policy sampling with train_dataloader
 # TODO(danj): Make GFN a PolicyService
 # TODO(danj): How do you define flow through abitrary points?
+# TODO(danj): How do you determine convergence?
 
 
 class GFN(pl.LightningModule):
