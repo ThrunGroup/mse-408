@@ -1,34 +1,48 @@
 import multiprocessing as mp
 import pickle
-import queue
+import time
+from multiprocessing.queues import Queue
 from typing import Iterable, Protocol
 
 from torch.utils.data import IterableDataset
 
-
-class StreamingDataset(IterableDataset):
-    def __init__(self, stream: Iterable, serializer: "Serializer" | None = None):
-        self.stream = stream
-        self.serializer = serializer
-
-    def __iter__(self):
-        for item in self.stream:
-            if self.serializer:
-                self.serializer.save(item)
-            yield item
+# TODO: need to convert to
 
 
-class StreamingQueueAdapter:
-    def __init__(self, queue: queue.Queue, closed: mp.Event):
-        self.q = queue
-        self.closed = closed
+class IterableMultiprocessQueue(Queue):
+    def __init__(self, sentinal=-1, maxsize=0, *, ctx=None):
+        self._sentinal = sentinal
+        super().__init__(
+            maxsize=maxsize, ctx=ctx if ctx is not None else mp.get_context()
+        )
 
     def __iter__(self):
-        while not self.closed.is_set():
-            try:
-                yield self.q.get(timeout=1)
-            except queue.Empty:
-                pass
+        return self
+
+    def close(self):
+        self.put(self._sentinal)
+        while not self.empty():
+            time.sleep(0.01)
+        super().close()
+
+    def __next__(self):
+        try:
+            result = self.get()
+        except OSError:
+            raise StopIteration
+        if result == self._sentinal:
+            self.put(result)
+            raise StopIteration
+        return result
+
+
+class QueueDataset(IterableDataset):
+    def __init__(self, queue: IterableMultiprocessQueue):
+        super().__init__()
+        self.queue = queue
+
+    def __iter__(self):
+        return iter(self.queue)
 
 
 class Serializer(Protocol):
